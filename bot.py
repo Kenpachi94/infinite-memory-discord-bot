@@ -343,12 +343,15 @@ class PixelTableBot:
                         similar_parts.append(f"{speaker}: {msg['text']}")
                         seen_texts.add(msg['text'])
                 
-                prompt = f'''
+                recent_str = "\n".join(reversed(recent_parts))
+                similar_str = "\n".join(similar_parts)
+
+                prompt = f"""
                 Previous exchanges:
-                {"\n".join(reversed(recent_parts))}
+                {recent_str}
 
                 Related earlier messages:
-                {"\n".join(similar_parts)}
+                {similar_str}
 
                 Current message: {question}
 
@@ -364,11 +367,8 @@ class PixelTableBot:
                 - Acknowledge location or preferences when shared
                 - Provide specific, actionable details
                 - Stay focused on current discussion topic
-                '''
-
+                """
                 return prompt
-
-
             
             chat_table.add_computed_column(context=get_context(chat_table.question))
             chat_table.add_computed_column(prompt=create_dm_prompt(
