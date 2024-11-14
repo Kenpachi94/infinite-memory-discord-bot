@@ -27,38 +27,7 @@ class MessageFormatter:
             value=question[:1024],  # Discord field value limit
             inline=False
         )
-
-        # Add relevant context field
-        if context:
-            context_text = []
-            total_length = 0
-            
-            for i, ctx in enumerate(context, 1):
-                score = round(float(ctx['sim']) * 100, 1)
-                sender = ctx.get('username', 'Bot' if ctx.get('is_bot', False) else 'User')
-                
-                # Format context entry
-                entry = (
-                    f"{i}. {sender} ({score}% relevance)\n"
-                    f"```{ctx['text'][:100]}```"  # Limit each context entry to 100 chars
-                )
-                
-                # Check if adding this entry would exceed Discord's limit
-                if total_length + len(entry) + 1 > 1024:  # +1 for newline
-                    context_text.append("...")  # Add ellipsis to indicate truncation
-                    break
-                    
-                context_text.append(entry)
-                total_length += len(entry) + 1  # +1 for newline
-
-            context_value = "\n".join(context_text) if context_text else "No relevant context found"
-            
-            embed.add_field(
-                name="🧠 Relevant Context",
-                value=context_value[:1024],  # Ensure we don't exceed Discord's limit
-                inline=False
-            )
-
+        
         return embed
 
     @staticmethod
