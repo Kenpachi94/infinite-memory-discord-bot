@@ -343,28 +343,31 @@ class PixelTableBot:
                         similar_parts.append(f"{speaker}: {msg['text']}")
                         seen_texts.add(msg['text'])
                 
-                prompt = f"""Previous exchanges:
-            {"\n".join(reversed(recent_parts))}
+                prompt = f'''
+                Previous exchanges:
+                {"\n".join(reversed(recent_parts))}
 
-            Related earlier messages:
-            {"\n".join(similar_parts)}
+                Related earlier messages:
+                {"\n".join(similar_parts)}
 
-            Current message: {question}
+                Current message: {question}
 
-            KEY BEHAVIORS:
-            1. Maintain natural conversation flow
-            2. Remember details shared by the user
-            3. Connect new information to current topics
-            4. Progress discussions forward
-            5. Ask for clarification only about new information
+                KEY BEHAVIORS:
+                1. Maintain natural conversation flow
+                2. Remember details shared by the user
+                3. Connect new information to current topics
+                4. Progress discussions forward
+                5. Ask for clarification only about new information
 
-            CONVERSATION PRINCIPLES:
-            - Build upon what's already discussed
-            - Acknowledge location or preferences when shared
-            - Provide specific, actionable details
-            - Stay focused on current discussion topic"""
+                CONVERSATION PRINCIPLES:
+                - Build upon what's already discussed
+                - Acknowledge location or preferences when shared
+                - Provide specific, actionable details
+                - Stay focused on current discussion topic
+                '''
 
                 return prompt
+
 
             
             chat_table.add_computed_column(context=get_context(chat_table.question))
