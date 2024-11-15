@@ -3,6 +3,7 @@
 [![Discord.py](https://img.shields.io/badge/discord.py-2.0%2B-blue.svg)](https://github.com/Rapptz/discord.py) 
 [![Pixeltable](https://img.shields.io/pypi/v/pixeltable?color=4D148C)](https://pypi.org/project/pixeltable/)
 [![Railway](https://img.shields.io/badge/Railway-Deployed-success)](https://railway.app/project/fdff26cf-bb1b-4fc6-ae40-76608785b337)
+[![My Discord (1306431018890166272)](https://img.shields.io/badge/💬-Discord-%235865F2.svg)](https://discord.gg/QPyqFYx2UN)
 
 A Discord bot that remembers your conversations! Built with [Pixeltable](https://github.com/pixeltable/pixeltable) and OpenAI.
 
