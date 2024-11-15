@@ -353,21 +353,8 @@ class PixelTableBot:
                 Related earlier messages:
                 {similar_str}
 
-                Current message: {question}
-
-                KEY BEHAVIORS:
-                1. Maintain natural conversation flow
-                2. Remember details shared by the user
-                3. Connect new information to current topics
-                4. Progress discussions forward
-                5. Ask for clarification only about new information
-
-                CONVERSATION PRINCIPLES:
-                - Build upon what's already discussed
-                - Acknowledge location or preferences when shared
-                - Provide specific, actionable details
-                - Stay focused on current discussion topic
-                """
+                Current message: {question}"""
+                
                 return prompt
             
             chat_table.add_computed_column(context=get_context(chat_table.question))
@@ -376,33 +363,40 @@ class PixelTableBot:
                 chat_table.question
             ))
             
-            # Update chat settings for better conversation flow
+            SYSTEM_PROMPT = '''You are a contextually-aware conversational assistant.
+
+            CONTEXT HIERARCHY:
+            1. Immediate Focus
+               - Latest message requires direct response
+               - Recent conversation provides immediate context
+               - User's current topic is priority
+            
+            2. Memory Utilization
+               - High-similarity score past context guides responses
+               - User preferences and details persist
+               - Location and preferences inform suggestions
+               - Historical context enriches understanding
+            
+            CONVERSATION PRINCIPLES:
+            1. Natural Flow
+               - Progress discussion forward
+               - No repetition of known information
+               - Connect new information to current topic
+               - Ask for clarification only about new details
+            
+            2. Practical Approach
+               - Specific, actionable suggestions
+               - Concrete details over general advice
+               - Stay focused on current discussion
+               - Build upon established context
+            
+            Remember: You are one continuous conversation away from excellent assistance - maintain context, progress naturally, be specific.'''
+            
             chat_table['response'] = openai.chat_completions(
                 messages=[
                     {
                         "role": "system",
-                        "content": '''You are a helpful personal assistant focused on natural conversation.
-
-            CORE PRINCIPLES:
-            - Maintain conversational context
-            - Remember user preferences and details
-            - Progress discussions naturally
-            - Be specific and actionable
-            - Stay on topic unless user changes it
-
-            CONVERSATION STYLE:
-            - Friendly and engaging
-            - Clear and concise
-            - Naturally incorporate context
-            - Ask relevant follow-up questions
-            - Provide practical suggestions
-
-            When user shares information (like location/preferences):
-            - Acknowledge it naturally
-            - Connect it to current topic
-            - Use it to provide better assistance
-            - Don't restart conversations
-            - Build on existing context'''
+                        "content": SYSTEM_PROMPT
                     },
                     {
                         "role": "user",
@@ -410,10 +404,19 @@ class PixelTableBot:
                     }
                 ],
                 model='gpt-4o-mini',
-                temperature=0.7,
-                max_tokens=2000,
-                presence_penalty=0.7,
-                frequency_penalty=0.5
+                temperature=0.7,        # Keep some creativity
+                top_p=0.9,             # Slightly restrict sampling space for more focused responses
+                max_tokens=2000,       # Allow for detailed responses
+                presence_penalty=0.8,   # Encourage using provided context
+                frequency_penalty=0.6,  # Reduce repetition
+                stop=[
+                    "\nUser:",         # Stop at new user message
+                    "\nBot:",          # Stop at new bot message
+                    "\n\n\n"          # Stop at large gaps
+                ],
+                response_format={
+                    "type": "text"     # Ensure text responses
+                }
             ).choices[0].message.content
 
         except Exception as e:
