@@ -10,22 +10,20 @@ A Discord bot that remembers your conversations! Built with [Pixeltable](https:/
 ## 🎮 Try It Now!
 Add PixelBot to your server instantly through the [Discord Application Directory](https://discord.com/application-directory/1304932122611552346)!
 
+1. Click "Add to Server"
+2. Follow Discord's authorization flow
+3. Start chatting in servers and/or DMs!
+
 ## ✨ Features
 - 🧠 **Perfect Memory**: Maintains context across entire conversations
 - 🔍 **Smart Search**: Find past messages based on meaning, not just keywords
 - 💬 **Natural Chat**: Responds like someone who remembers your preferences
 - 📱 **DM Support**: Works in both servers and private messages
 
-## 🚀 Quick Start
+## 🚀 Build Your Own
 
-### Option 1: Add to Your Server
-1. Visit [PixelBot in Discord App Directory](https://discord.com/application-directory/1304932122611552346)
-2. Click "Add to Server"
-3. Follow Discord's authorization flow
-4. Start chatting in servers and/or DMs!
-
-### Option 2: Deploy Your Own Instance
-Deploy your own version of PixelBot using Railway:
+### Option 1: Deploy Your Own Instance
+Deploy your own version of PixelBot using, e.g., Railway:
 
 [![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/project/fdff26cf-bb1b-4fc6-ae40-76608785b337)
 
@@ -36,7 +34,7 @@ Deploy your own version of PixelBot using Railway:
    - `OPENAI_API_KEY`
 4. Deploy!
 
-### Option 3: Local Development
+### Option 2: Local Development
 ```bash
 # Setup
 git clone https://github.com/yourusername/PixelBot.git
