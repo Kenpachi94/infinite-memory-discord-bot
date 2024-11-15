@@ -37,7 +37,7 @@ class PixelTableBot:
     @pxt.expr_udf
     def get_embeddings(text: str) -> np.ndarray:
         """Generate embeddings using sentence transformer"""
-        return sentence_transformer(text, model_id='all-mpnet-base-v2')
+        return sentence_transformer(text, model_id='BAAI/bge-large-v1.5')
 
     def store_message(self, server_id: str, channel_id: str, username: str, content: str):
         """Store a server message"""
