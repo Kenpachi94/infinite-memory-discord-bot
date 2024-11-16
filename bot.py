@@ -23,12 +23,12 @@ class PixelTableBot:
         self.server_tables = {}
         self.user_tables = {}  # For DM conversations
         self.formatter = MessageFormatter()
-        
+
         # Initialize bot with all required intents
         intents = discord.Intents.default()
         intents.message_content = True
         intents.dm_messages = True
-        
+
         self.bot = commands.Bot(command_prefix="!", intents=intents)
         self.setup_commands()
         self.logger.info("Bot initialization completed")
@@ -44,7 +44,7 @@ class PixelTableBot:
         try:
             if server_id not in self.server_tables:
                 self.initialize_server_tables(server_id)
-            
+
             messages_table = self.server_tables[server_id]['messages']
             messages_table.insert([{
                 'server_id': server_id,
@@ -53,9 +53,9 @@ class PixelTableBot:
                 'content': content,
                 'timestamp': datetime.now()
             }])
-            
+
             self.logger.info(f"Successfully stored message for server {server_id}")
-            
+
         except Exception as e:
             self.logger.error(f"Failed to store message: {str(e)}")
 
@@ -64,7 +64,7 @@ class PixelTableBot:
         try:
             if user_id not in self.user_tables:
                 self.initialize_user_tables(user_id)
-            
+
             messages_table = self.user_tables[user_id]['messages']
             messages_table.insert([{
                 'user_id': user_id,
@@ -72,9 +72,10 @@ class PixelTableBot:
                 'is_bot': is_bot,
                 'timestamp': datetime.now()
             }])
-            
+
         except Exception as e:
             self.logger.error(f"Failed to store DM: {str(e)}")
+            raise
 
     def initialize_server_tables(self, server_id: str):
         """Initialize server-specific tables"""
@@ -84,20 +85,20 @@ class PixelTableBot:
 
             server_dir = f'discord_bot_{server_id}'
             tables = {}
-            
+
             try:
                 # Try to get existing tables first
                 tables['messages'] = pxt.get_table(f'{server_dir}.messages')
                 tables['messages_view'] = pxt.get_table(f'{server_dir}.sentences')
                 tables['chat'] = pxt.get_table(f'{server_dir}.chat')
-                
+
             except Exception:
                 try:
                     pxt.create_dir(server_dir)
                 except Exception as e:
                     if "already exists" not in str(e):
                         raise
-                
+
                 # Create tables for server
                 tables['messages'] = pxt.create_table(
                     f'{server_dir}.messages',
@@ -109,7 +110,7 @@ class PixelTableBot:
                         'timestamp': pxt.Timestamp
                     }
                 )
-                
+
                 tables['messages_view'] = pxt.create_view(
                     f'{server_dir}.sentences',
                     tables['messages'],
@@ -118,9 +119,9 @@ class PixelTableBot:
                         separators='sentence',
                     )
                 )
-                
+
                 tables['messages_view'].add_embedding_index('text', string_embed=self.get_embeddings)
-                
+
                 tables['chat'] = pxt.create_table(
                     f'{server_dir}.chat',
                     {
@@ -133,7 +134,7 @@ class PixelTableBot:
 
             self.server_tables[server_id] = tables
             self.setup_chat_columns(server_id)
-                
+
         except Exception as e:
             self.logger.error(f"Failed to initialize server tables: {str(e)}")
             raise
@@ -146,7 +147,7 @@ class PixelTableBot:
 
             user_dir = f'discord_dm_{user_id}'
             tables = {}
-            
+
             try:
                 # Try to get existing tables first
                 tables['messages'] = pxt.get_table(f'{user_dir}.messages')
@@ -158,8 +159,8 @@ class PixelTableBot:
                 except Exception as e:
                     if "already exists" not in str(e):
                         raise
-                
-                # Create tables for DMs
+
+                # Create tables for DMs with corrected schema
                 tables['messages'] = pxt.create_table(
                     f'{user_dir}.messages',
                     {
@@ -169,7 +170,7 @@ class PixelTableBot:
                         'timestamp': pxt.Timestamp
                     }
                 )
-                
+
                 tables['messages_view'] = pxt.create_view(
                     f'{user_dir}.sentences',
                     tables['messages'],
@@ -178,9 +179,9 @@ class PixelTableBot:
                         separators='sentence',
                     )
                 )
-                
+
                 tables['messages_view'].add_embedding_index('text', string_embed=self.get_embeddings)
-                
+
                 tables['chat'] = pxt.create_table(
                     f'{user_dir}.chat',
                     {
@@ -189,10 +190,10 @@ class PixelTableBot:
                         'timestamp': pxt.Timestamp
                     }
                 )
-                
+
             self.user_tables[user_id] = tables
             self.setup_chat_columns_dm(user_id)
-            
+
         except Exception as e:
             self.logger.error(f"Failed to initialize user tables: {str(e)}")
             raise
@@ -236,9 +237,9 @@ class PixelTableBot:
                                 f"[Relevance: {relevance}%]\n"
                                 f"{msg['username']}: {msg['text']}"
                             )
-                    
+
                     context_str = "\n\n".join(context_parts)
-                    
+
                     return f'''Previous conversation context from the server:
                     {context_str}
 
@@ -259,29 +260,29 @@ class PixelTableBot:
 
             try:
                 SYSTEM_PROMPT = '''You are a contextually-aware conversational assistant.
-    
+
                 CONTEXT HIERARCHY:
                 1. Immediate Focus
                    - Latest message requires direct response
                    - Recent conversation provides immediate context
                    - User's current topic is priority
-                
+
                 2. Memory Utilization
                    - High-similarity score past context guides responses
-                
+
                 CONVERSATION PRINCIPLES:
                 1. Natural Flow
                    - Progress discussion forward
                    - No repetition of known information
                    - Connect new information to current topic
                    - Ask for clarification only about new details
-                
+
                 2. Practical Approach
                    - Specific, actionable suggestions
                    - Concrete details over general advice
                    - Stay focused on answering current discussion
                    - Build upon established context
-                
+
                 Remember: You are a focused Q&A system, not a conversational agent. Stay on topic and provide precise answers.'''
 
                 chat_table['response'] = openai.chat_completions(
@@ -317,121 +318,109 @@ class PixelTableBot:
             raise
 
     def setup_chat_columns_dm(self, user_id: str):
+        """Set up computed columns for DM chat"""
         try:
             tables = self.user_tables[user_id]
             messages_view = tables['messages_view']
             chat_table = tables['chat']
-    
+
             # First add context column
-            try:
-                @messages_view.query
-                def get_context(question_text: str):
-                    sim = messages_view.text.similarity(question_text)
-                    return (
-                        messages_view
-                        .where(sim > 0.2)
-                        .order_by(sim, asc=False)
-                        .select(
-                            text=messages_view.text,
-                            is_bot=messages_view.is_bot,
-                            sim=sim
-                        )
-                        .limit(50)
+            @messages_view.query
+            def get_context(question_text: str):
+                sim = messages_view.text.similarity(question_text)
+                return (
+                    messages_view
+                    .where(sim > 0.2)
+                    .order_by(sim, asc=False)
+                    .select(
+                        text=messages_view.text,
+                        is_bot=messages_view.is_bot,
+                        sim=sim
                     )
-                
-                chat_table.add_computed_column(context=get_context(chat_table.question))
-            except Exception as e:
-                if "already exists" not in str(e):
-                    raise
-    
+                    .limit(50)
+                )
+
+            chat_table['context'] = get_context(chat_table.question)
+
             # Then add prompt column
-            try:
-                @pxt.udf
-                def create_dm_prompt(context: list[dict], question: str) -> str:
-                    sorted_context = sorted(context, key=lambda x: x['sim'], reverse=True)
-                    context_parts = []
-                    for msg in sorted_context:
-                        if msg['sim'] > 0.2:
-                            relevance = round(float(msg['sim'] * 100), 1)
-                            speaker = "Assistant" if msg['is_bot'] else "User"
-                            context_parts.append(
-                                f"[Relevance: {relevance}%]\n"
-                                f"{speaker}: {msg['text']}"
-                            )
-                    
-                    context_str = "\n\n".join(context_parts)
-                    
-                    return f'''Previous conversation history:
-                    {context_str}
-    
-                    Current question: {question}
-    
-                    Important:
-                    - Use context naturally without explicitly stating memory or recall
-                    - Keep track of user preferences and details consistently
-                    - Progress the conversation naturally
-                    - Be concise but maintain important context'''
-    
-                chat_table.add_computed_column(prompt=create_dm_prompt(
-                    chat_table.context,
-                    chat_table.question
-                ))
-            except Exception as e:
-                if "already exists" not in str(e):
-                    raise
-    
+            @pxt.udf
+            def create_dm_prompt(context: list[dict], question: str) -> str:
+                sorted_context = sorted(context, key=lambda x: x['sim'], reverse=True)
+                context_parts = []
+                for msg in sorted_context:
+                    if msg['sim'] > 0.2:
+                        relevance = round(float(msg['sim'] * 100), 1)
+                        speaker = "Assistant" if msg['is_bot'] else "User"
+                        context_parts.append(
+                            f"[Relevance: {relevance}%]\n"
+                            f"{speaker}: {msg['text']}"
+                        )
+
+                context_str = "\n\n".join(context_parts)
+
+                return f'''Previous conversation history:
+                {context_str}
+
+                Current question: {question}
+
+                Important:
+                - Use context naturally without explicitly stating memory or recall
+                - Keep track of user preferences and details consistently
+                - Progress the conversation naturally
+                - Be concise but maintain important context'''
+
+            chat_table['prompt'] = create_dm_prompt(
+                chat_table.context,
+                chat_table.question
+            )
+
             # Finally add response column
-            try:
-                SYSTEM_PROMPT = '''You are a contextually-aware conversational assistant.
-    
-                CONTEXT HIERARCHY:
-                1. Immediate Focus
-                   - Latest message requires direct response
-                   - Recent conversation provides immediate context
-                   - User's current topic is priority
-                
-                2. Memory Utilization
-                   - High-similarity score past context guides responses
-                   - User preferences and details persist
-                   - Historical context enriches understanding
-                
-                CONVERSATION PRINCIPLES:
-                1. Natural Flow
-                   - Progress discussion forward
-                   - No repetition of known information
-                   - Connect new information to current topic
-                   - Ask for clarification only about new details
-                
-                2. Practical Approach
-                   - Specific, actionable suggestions
-                   - Concrete details over general advice
-                   - Stay focused on current discussion
-                   - Build upon established context'''
-                
-                chat_table.add_computed_column(response=openai.chat_completions(
-                    messages=[
-                        {
-                            "role": "system",
-                            "content": SYSTEM_PROMPT
-                        },
-                        {
-                            "role": "user",
-                            "content": chat_table.prompt
-                        }
-                    ],
-                    model='gpt-4o-mini',
-                    temperature=0.4,
-                    top_p=0.7,
-                    max_tokens=2000,
-                    presence_penalty=0.3,
-                    frequency_penalty=0.3,
-                    stop=["\nUser:", "\nBot:", "\n\n\n"]
-                ).choices[0].message.content)
-                
-            except Exception as e:
-                if "already exists" not in str(e):
-                    raise
-    
+            SYSTEM_PROMPT = '''You are a contextually-aware conversational assistant.
+
+            CONTEXT HIERARCHY:
+            1. Immediate Focus
+            - Latest message requires direct response
+            - Recent conversation provides immediate context
+            - User's current topic is priority
+
+            2. Memory Utilization
+            - High-similarity score past context guides responses
+            - User preferences and details persist
+            - Historical context enriches understanding
+
+            CONVERSATION PRINCIPLES:
+            1. Natural Flow
+            - Progress discussion forward
+            - No repetition of known information
+            - Connect new information to current topic
+            - Ask for clarification only about new details
+
+            2. Practical Approach
+            - Specific, actionable suggestions
+            - Concrete details over general advice
+            - Stay focused on current discussion
+            - Build upon established context'''
+
+            chat_table['response'] = openai.chat_completions(
+                messages=[
+                    {
+                        "role": "system",
+                        "content": SYSTEM_PROMPT
+                    },
+                    {
+                        "role": "user",
+                        "content": chat_table.prompt
+                    }
+                ],
+                model='gpt-4o-mini',
+                temperature=0.4,
+                top_p=0.7,
+                max_tokens=2000,
+                presence_penalty=0.3,
+                frequency_penalty=0.3,
+                stop=["\nUser:", "\nBot:", "\n\n\n"]
+            ).choices[0].message.content
+
         except Exception as e:
             self.logger.error(f"Failed to set up DM chat columns: {str(e)}")
             raise
@@ -440,54 +429,50 @@ class PixelTableBot:
         """Handle incoming DM messages"""
         user_id = str(message.author.id)
         self.logger.info(f"Processing DM from user {user_id}")
-        
-        # Store the user's message
-        self.store_dm_message(user_id, message.content, is_bot=False)
-        self.logger.info("Stored user message")
-        
-        # Send typing indicator
-        async with message.channel.typing():
-            try:
+
+        try:
+            # Initialize tables if needed
+            if user_id not in self.user_tables:
+                self.initialize_user_tables(user_id)
+
+            # Store the user's message
+            self.store_dm_message(user_id, message.content, is_bot=False)
+            self.logger.info("Stored user message")
+
+            # Send typing indicator
+            async with message.channel.typing():
                 # Get chat response
                 chat_table = self.user_tables[user_id]['chat']
-                self.logger.info("Retrieved chat table")
-                
+
                 chat_table.insert([{
                     'user_id': user_id,
                     'question': message.content,
                     'timestamp': datetime.now()
                 }])
-                self.logger.info("Inserted question into chat table")
-                
-                # Debug column names
-                self.logger.info(f"Available columns: {chat_table.column_names()}")
-                
+
+                # Fetch response from chat table
                 result = chat_table.select(
-                    chat_table.question,
-                    chat_table.response,
-                    chat_table.context
+                    chat_table.response
                 ).order_by(chat_table.timestamp, asc=False).limit(1).collect()
-                
+
                 if len(result) == 0:
                     raise ValueError("Failed to generate response")
-                
+
                 response = result['response'][0]
-                self.logger.info("Generated response successfully")
-                
+
                 # Store bot's response
                 self.store_dm_message(user_id, response, is_bot=True)
-                self.logger.info("Stored bot response")
-                
+
                 # Send response
                 await message.reply(response)
-                
-            except Exception as e:
-                self.logger.error(f"Error handling DM: {str(e)}", exc_info=True)
-                await message.reply(f"Sorry, I encountered an error: {str(e)}")
+
+        except Exception as e:
+            self.logger.error(f"Error handling DM: {str(e)}", exc_info=True)
+            await message.reply(f"Sorry, I encountered an error: {str(e)}")
 
     def setup_commands(self):
         """Set up Discord slash commands"""
-        
+
         @self.bot.event
         async def on_ready():
             self.logger.info(f"Bot logged in as {self.bot.user.name}")
@@ -506,7 +491,7 @@ class PixelTableBot:
             if isinstance(message.channel, discord.DMChannel):
                 await self.handle_dm(message)
                 return
-            
+
             # Handle server messages
             self.store_message(
                 str(message.guild.id),
@@ -522,14 +507,14 @@ class PixelTableBot:
             if isinstance(interaction.channel, discord.DMChannel):
                 await interaction.response.send_message("In DMs, you can just type your message directly!", ephemeral=True)
                 return
-                
+
             await interaction.response.defer()
-            
+
             try:
                 server_id = str(interaction.guild_id)
                 if server_id not in self.server_tables:
                     self.initialize_server_tables(server_id)
-                    
+
                 chat_table = self.server_tables[server_id]['chat']
                 chat_table.insert([{
                     'server_id': server_id,
@@ -537,13 +522,13 @@ class PixelTableBot:
                     'question': question,
                     'timestamp': datetime.now()
                 }])
-                
+
                 result = chat_table.select(
                     chat_table.question,
                     chat_table.response,
                     chat_table.context
                 ).order_by(chat_table.timestamp, asc=False).limit(1).collect()
-                
+
                 if len(result) == 0:
                     raise ValueError("Failed to generate response")
 
@@ -552,7 +537,7 @@ class PixelTableBot:
                     response=result['response'][0],
                     context=result['context'][0]
                 )
-                
+
                 await interaction.followup.send(embed=embed)
 
             except Exception as e:
@@ -567,14 +552,14 @@ class PixelTableBot:
             if isinstance(interaction.channel, discord.DMChannel):
                 await interaction.response.send_message("This command is only available in servers!", ephemeral=True)
                 return
-                
+
             await interaction.response.defer()
-            
+
             try:
                 server_id = str(interaction.guild_id)
                 if server_id not in self.server_tables:
                     self.initialize_server_tables(server_id)
-                    
+
                 messages_view = self.server_tables[server_id]['messages_view']
                 sim = messages_view.text.similarity(query)
                 results_df = (
@@ -598,7 +583,7 @@ class PixelTableBot:
                     results_df.to_dict('records'),
                     query
                 )
-                
+
                 await interaction.followup.send(embed=embed)
 
             except Exception as e:
@@ -655,7 +640,7 @@ def main():
     token = os.getenv('DISCORD_TOKEN')
     if not token:
         raise ValueError("Missing DISCORD_TOKEN in environment variables")
-    
+
     try:
         logger.info("Starting Discord bot...")
         bot = PixelTableBot()
