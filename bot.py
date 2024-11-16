@@ -217,7 +217,7 @@ class PixelTableBot:
                             username=messages_view.username,
                             sim=sim
                         )
-                        .limit(20)
+                        .limit(50)
                     )
                 chat_table.add_computed_column(context=get_context(chat_table.question))
             except Exception as e:
@@ -323,21 +323,21 @@ class PixelTableBot:
                         is_bot=messages_view.is_bot,
                         sim=sim
                     )
-                    .limit(20)
+                    .limit(50)
                 )
 
             @pxt.udf
             def create_dm_prompt(context: list[dict], question: str) -> str:
                 # Get last 4 messages for immediate context
                 recent_parts = []
-                for msg in context[:4]:
+                for msg in context[:8]:
                     speaker = 'Bot' if msg['is_bot'] else 'User'
                     recent_parts.append(f"{speaker}: {msg['text']}")
                 
                 # Get relevant past context
                 similar_parts = []
                 seen_texts = set()
-                for msg in context[4:]:
+                for msg in context[8:]:
                     if msg['sim'] > 0.3 and msg['text'] not in seen_texts:
                         speaker = 'Bot' if msg['is_bot'] else 'User'
                         similar_parts.append(f"{speaker}: {msg['text']}")
@@ -404,11 +404,11 @@ class PixelTableBot:
                     }
                 ],
                 model='gpt-4o-mini',
-                temperature=0.7,        # Keep some creativity
-                top_p=0.9,             # Slightly restrict sampling space for more focused responses
+                temperature=0.4,        # Keep some creativity
+                top_p=0.7,             # Slightly restrict sampling space for more focused responses
                 max_tokens=2000,       # Allow for detailed responses
-                presence_penalty=0.8,   # Encourage using provided context
-                frequency_penalty=0.6,  # Reduce repetition
+                presence_penalty=0.3,   # Encourage using provided context
+                frequency_penalty=0.3,  # Reduce repetition
                 stop=[
                     "\nUser:",         # Stop at new user message
                     "\nBot:",          # Stop at new bot message
