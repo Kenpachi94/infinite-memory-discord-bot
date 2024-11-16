@@ -210,14 +210,14 @@ class PixelTableBot:
                     sim = messages_view.text.similarity(question_text)
                     return (
                         messages_view
-                        .where(sim > 0.2)
+                        .where(sim > 0.3)
                         .order_by(sim, asc=False)
                         .select(
                             text=messages_view.text,
                             username=messages_view.username,
                             sim=sim
                         )
-                        .limit(50)
+                        .limit(20)
                     )
                 chat_table.add_computed_column(context=get_context(chat_table.question))
             except Exception as e:
@@ -230,7 +230,7 @@ class PixelTableBot:
                     sorted_context = sorted(context, key=lambda x: x['sim'], reverse=True)
                     context_parts = []
                     for msg in sorted_context:
-                        if msg['sim'] > 0.2:
+                        if msg['sim'] > 0.3:
                             relevance = round(float(msg['sim'] * 100), 1)
                             context_parts.append(
                                 f"[Relevance: {relevance}%]\n"
@@ -246,8 +246,8 @@ class PixelTableBot:
 
                     Important:
                     - Use context naturally without explicitly stating memory or recall
-                    - Keep track of specific details, products, and preferences mentioned
-                    - Progress the conversation naturally with new, relevant information'''
+                    - Focus solely on answering the specific question asked
+                    - Keep the response concise and to the point'''
 
                 chat_table.add_computed_column(prompt=create_prompt(
                     chat_table.context,
@@ -268,9 +268,6 @@ class PixelTableBot:
                 
                 2. Memory Utilization
                    - High-similarity score past context guides responses
-                   - User preferences and details persist
-                   - Location and preferences inform suggestions
-                   - Historical context enriches understanding
                 
                 CONVERSATION PRINCIPLES:
                 1. Natural Flow
@@ -282,10 +279,10 @@ class PixelTableBot:
                 2. Practical Approach
                    - Specific, actionable suggestions
                    - Concrete details over general advice
-                   - Stay focused on current discussion
+                   - Stay focused on answering current discussion
                    - Build upon established context
                 
-                Remember: You are one continuous conversation away from excellent assistance - maintain context, progress naturally, be specific.'''
+                Remember: You are a focused Q&A system, not a conversational agent. Stay on topic and provide precise answers.'''
 
                 chat_table['response'] = openai.chat_completions(
                     messages=[
@@ -299,11 +296,11 @@ class PixelTableBot:
                         }
                     ],
                     model='gpt-4o-mini',
-                    temperature=0.4,        # Keep some creativity
-                    top_p=0.7,             # Slightly restrict sampling space for more focused responses
-                    max_tokens=2000,       # Allow for detailed responses
-                    presence_penalty=0.3,   # Encourage using provided context
-                    frequency_penalty=0.3,  # Reduce repetition
+                    temperature=0.3,        # Keep some creativity
+                    top_p=0.5,             # Slightly restrict sampling space for more focused responses
+                    max_tokens=1000,       # Allow for detailed responses
+                    presence_penalty=0.1,   # Encourage using provided context
+                    frequency_penalty=0.2,  # Reduce repetition
                     stop=[
                         "\nUser:",         # Stop at new user message
                         "\nBot:",          # Stop at new bot message
