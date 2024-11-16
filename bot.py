@@ -258,33 +258,40 @@ class PixelTableBot:
                     self.logger.error(f"Error adding prompt column: {str(e)}")
 
             try:
-                # Update chat settings for better conversation flow
+                SYSTEM_PROMPT = '''You are a contextually-aware conversational assistant.
+    
+                CONTEXT HIERARCHY:
+                1. Immediate Focus
+                   - Latest message requires direct response
+                   - Recent conversation provides immediate context
+                   - User's current topic is priority
+                
+                2. Memory Utilization
+                   - High-similarity score past context guides responses
+                   - User preferences and details persist
+                   - Location and preferences inform suggestions
+                   - Historical context enriches understanding
+                
+                CONVERSATION PRINCIPLES:
+                1. Natural Flow
+                   - Progress discussion forward
+                   - No repetition of known information
+                   - Connect new information to current topic
+                   - Ask for clarification only about new details
+                
+                2. Practical Approach
+                   - Specific, actionable suggestions
+                   - Concrete details over general advice
+                   - Stay focused on current discussion
+                   - Build upon established context
+                
+                Remember: You are one continuous conversation away from excellent assistance - maintain context, progress naturally, be specific.'''
+
                 chat_table['response'] = openai.chat_completions(
                     messages=[
                         {
                             "role": "system",
-                            "content": '''You are a helpful personal assistant focused on natural conversation.
-
-                CORE PRINCIPLES:
-                - Maintain conversational context
-                - Remember user preferences and details
-                - Progress discussions naturally
-                - Be specific and actionable
-                - Stay on topic unless user changes it
-
-                CONVERSATION STYLE:
-                - Friendly and engaging
-                - Clear and concise
-                - Naturally incorporate context
-                - Ask relevant follow-up questions
-                - Provide practical suggestions
-
-                When user shares information (like location/preferences):
-                - Acknowledge it naturally
-                - Connect it to current topic
-                - Use it to provide better assistance
-                - Don't restart conversations
-                - Build on existing context'''
+                            "content": SYSTEM_PROMPT
                         },
                         {
                             "role": "user",
@@ -292,11 +299,18 @@ class PixelTableBot:
                         }
                     ],
                     model='gpt-4o-mini',
-                    temperature=0.7,
-                    max_tokens=2000,
-                    presence_penalty=0.7,
-                    frequency_penalty=0.5
+                    temperature=0.4,        # Keep some creativity
+                    top_p=0.7,             # Slightly restrict sampling space for more focused responses
+                    max_tokens=2000,       # Allow for detailed responses
+                    presence_penalty=0.3,   # Encourage using provided context
+                    frequency_penalty=0.3,  # Reduce repetition
+                    stop=[
+                        "\nUser:",         # Stop at new user message
+                        "\nBot:",          # Stop at new bot message
+                        "\n\n\n"          # Stop at large gaps
+                    ]
                 ).choices[0].message.content
+
             except Exception as e:
                 if "already exists" not in str(e):
                     self.logger.error(f"Error adding response column: {str(e)}")
@@ -317,44 +331,40 @@ class PixelTableBot:
                 sim = messages_view.text.similarity(question_text)
                 return (
                     messages_view
-                    .order_by(messages_view.timestamp, asc=False)
+                    .where(sim > 0.2)
+                    .order_by(sim, asc=False)
                     .select(
                         text=messages_view.text,
-                        is_bot=messages_view.is_bot,
+                        username=messages_view.username,
                         sim=sim
                     )
                     .limit(50)
                 )
 
             @pxt.udf
-            def create_dm_prompt(context: list[dict], question: str) -> str:
-                # Get last 4 messages for immediate context
-                recent_parts = []
-                for msg in context[:8]:
-                    speaker = 'Bot' if msg['is_bot'] else 'User'
-                    recent_parts.append(f"{speaker}: {msg['text']}")
+            def create_prompt(context: list[dict], question: str) -> str:
+                sorted_context = sorted(context, key=lambda x: x['sim'], reverse=True)
+                context_parts = []
+                for msg in sorted_context:
+                    if msg['sim'] > 0.2:
+                        relevance = round(float(msg['sim'] * 100), 1)
+                        context_parts.append(
+                            f"[Relevance: {relevance}%]\n"
+                            f"{msg['username']}: {msg['text']}"
+                        )
                 
-                # Get relevant past context
-                similar_parts = []
-                seen_texts = set()
-                for msg in context[8:]:
-                    if msg['sim'] > 0.3 and msg['text'] not in seen_texts:
-                        speaker = 'Bot' if msg['is_bot'] else 'User'
-                        similar_parts.append(f"{speaker}: {msg['text']}")
-                        seen_texts.add(msg['text'])
+                context_str = "\n\n".join(context_parts)
                 
-                recent_str = "\n".join(reversed(recent_parts))
-                similar_str = "\n".join(similar_parts)
+                return f'''Previous conversation context from the server:
+                {context_str}
 
-                prompt = f"""
-                Previous exchanges:
-                {recent_str}
+                Current question: {question}
 
-                Related earlier messages:
-                {similar_str}
-
-                Current message: {question}"""
-                
+                Important:
+                - Use context naturally without explicitly stating memory or recall
+                - Keep track of specific details, products, and preferences mentioned
+                - Progress the conversation naturally with new, relevant information'''
+            
                 return prompt
             
             chat_table.add_computed_column(context=get_context(chat_table.question))
@@ -413,10 +423,7 @@ class PixelTableBot:
                     "\nUser:",         # Stop at new user message
                     "\nBot:",          # Stop at new bot message
                     "\n\n\n"          # Stop at large gaps
-                ],
-                response_format={
-                    "type": "text"     # Ensure text responses
-                }
+                ]
             ).choices[0].message.content
 
         except Exception as e:
