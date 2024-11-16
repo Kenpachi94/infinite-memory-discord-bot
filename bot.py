@@ -365,8 +365,6 @@ class PixelTableBot:
                 - Keep track of specific details, products, and preferences mentioned
                 - Progress the conversation naturally with new, relevant information'''
             
-                return prompt
-            
             chat_table.add_computed_column(context=get_context(chat_table.question))
             chat_table.add_computed_column(prompt=create_dm_prompt(
                 chat_table.context,
