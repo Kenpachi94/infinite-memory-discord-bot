@@ -317,7 +317,6 @@ class PixelTableBot:
             raise
 
     def setup_chat_columns_dm(self, user_id: str):
-        """Set up chat columns for DM conversations"""
         try:
             tables = self.user_tables[user_id]
             messages_view = tables['messages_view']
@@ -332,35 +331,37 @@ class PixelTableBot:
                     .order_by(sim, asc=False)
                     .select(
                         text=messages_view.text,
-                        username=messages_view.username,
+                        is_bot=messages_view.is_bot,  # Include who sent message
                         sim=sim
                     )
                     .limit(50)
                 )
-
+    
             @pxt.udf
-            def create_prompt(context: list[dict], question: str) -> str:
+            def create_dm_prompt(context: list[dict], question: str) -> str:
                 sorted_context = sorted(context, key=lambda x: x['sim'], reverse=True)
                 context_parts = []
                 for msg in sorted_context:
                     if msg['sim'] > 0.2:
                         relevance = round(float(msg['sim'] * 100), 1)
+                        speaker = "Assistant" if msg['is_bot'] else "User"
                         context_parts.append(
                             f"[Relevance: {relevance}%]\n"
-                            f"{msg['username']}: {msg['text']}"
+                            f"{speaker}: {msg['text']}"
                         )
                 
                 context_str = "\n\n".join(context_parts)
                 
-                return f'''Previous conversation context from the server:
+                return f'''Previous conversation history:
                 {context_str}
-
+    
                 Current question: {question}
-
+    
                 Important:
                 - Use context naturally without explicitly stating memory or recall
-                - Keep track of specific details, products, and preferences mentioned
-                - Progress the conversation naturally with new, relevant information'''
+                - Keep track of user preferences and details consistently
+                - Progress the conversation naturally
+                - Be concise but maintain important context'''
             
             chat_table.add_computed_column(context=get_context(chat_table.question))
             chat_table.add_computed_column(prompt=create_dm_prompt(
