@@ -321,107 +321,117 @@ class PixelTableBot:
             tables = self.user_tables[user_id]
             messages_view = tables['messages_view']
             chat_table = tables['chat']
-            
-            @messages_view.query
-            def get_context(question_text: str):
-                sim = messages_view.text.similarity(question_text)
-                return (
-                    messages_view
-                    .where(sim > 0.2)
-                    .order_by(sim, asc=False)
-                    .select(
-                        text=messages_view.text,
-                        is_bot=messages_view.is_bot,  # Include who sent message
-                        sim=sim
-                    )
-                    .limit(50)
-                )
     
-            @pxt.udf
-            def create_dm_prompt(context: list[dict], question: str) -> str:
-                sorted_context = sorted(context, key=lambda x: x['sim'], reverse=True)
-                context_parts = []
-                for msg in sorted_context:
-                    if msg['sim'] > 0.2:
-                        relevance = round(float(msg['sim'] * 100), 1)
-                        speaker = "Assistant" if msg['is_bot'] else "User"
-                        context_parts.append(
-                            f"[Relevance: {relevance}%]\n"
-                            f"{speaker}: {msg['text']}"
+            # First add context column
+            try:
+                @messages_view.query
+                def get_context(question_text: str):
+                    sim = messages_view.text.similarity(question_text)
+                    return (
+                        messages_view
+                        .where(sim > 0.2)
+                        .order_by(sim, asc=False)
+                        .select(
+                            text=messages_view.text,
+                            is_bot=messages_view.is_bot,
+                            sim=sim
                         )
+                        .limit(50)
+                    )
                 
-                context_str = "\n\n".join(context_parts)
+                chat_table.add_computed_column(context=get_context(chat_table.question))
+            except Exception as e:
+                if "already exists" not in str(e):
+                    raise
+    
+            # Then add prompt column
+            try:
+                @pxt.udf
+                def create_dm_prompt(context: list[dict], question: str) -> str:
+                    sorted_context = sorted(context, key=lambda x: x['sim'], reverse=True)
+                    context_parts = []
+                    for msg in sorted_context:
+                        if msg['sim'] > 0.2:
+                            relevance = round(float(msg['sim'] * 100), 1)
+                            speaker = "Assistant" if msg['is_bot'] else "User"
+                            context_parts.append(
+                                f"[Relevance: {relevance}%]\n"
+                                f"{speaker}: {msg['text']}"
+                            )
+                    
+                    context_str = "\n\n".join(context_parts)
+                    
+                    return f'''Previous conversation history:
+                    {context_str}
+    
+                    Current question: {question}
+    
+                    Important:
+                    - Use context naturally without explicitly stating memory or recall
+                    - Keep track of user preferences and details consistently
+                    - Progress the conversation naturally
+                    - Be concise but maintain important context'''
+    
+                chat_table.add_computed_column(prompt=create_dm_prompt(
+                    chat_table.context,
+                    chat_table.question
+                ))
+            except Exception as e:
+                if "already exists" not in str(e):
+                    raise
+    
+            # Finally add response column
+            try:
+                SYSTEM_PROMPT = '''You are a contextually-aware conversational assistant.
+    
+                CONTEXT HIERARCHY:
+                1. Immediate Focus
+                   - Latest message requires direct response
+                   - Recent conversation provides immediate context
+                   - User's current topic is priority
                 
-                return f'''Previous conversation history:
-                {context_str}
+                2. Memory Utilization
+                   - High-similarity score past context guides responses
+                   - User preferences and details persist
+                   - Historical context enriches understanding
+                
+                CONVERSATION PRINCIPLES:
+                1. Natural Flow
+                   - Progress discussion forward
+                   - No repetition of known information
+                   - Connect new information to current topic
+                   - Ask for clarification only about new details
+                
+                2. Practical Approach
+                   - Specific, actionable suggestions
+                   - Concrete details over general advice
+                   - Stay focused on current discussion
+                   - Build upon established context'''
+                
+                chat_table.add_computed_column(response=openai.chat_completions(
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": SYSTEM_PROMPT
+                        },
+                        {
+                            "role": "user",
+                            "content": chat_table.prompt
+                        }
+                    ],
+                    model='gpt-4o-mini',
+                    temperature=0.4,
+                    top_p=0.7,
+                    max_tokens=2000,
+                    presence_penalty=0.3,
+                    frequency_penalty=0.3,
+                    stop=["\nUser:", "\nBot:", "\n\n\n"]
+                ).choices[0].message.content)
+                
+            except Exception as e:
+                if "already exists" not in str(e):
+                    raise
     
-                Current question: {question}
-    
-                Important:
-                - Use context naturally without explicitly stating memory or recall
-                - Keep track of user preferences and details consistently
-                - Progress the conversation naturally
-                - Be concise but maintain important context'''
-            
-            chat_table.add_computed_column(context=get_context(chat_table.question))
-            chat_table.add_computed_column(prompt=create_dm_prompt(
-                chat_table.context,
-                chat_table.question
-            ))
-            
-            SYSTEM_PROMPT = '''You are a contextually-aware conversational assistant.
-
-            CONTEXT HIERARCHY:
-            1. Immediate Focus
-               - Latest message requires direct response
-               - Recent conversation provides immediate context
-               - User's current topic is priority
-            
-            2. Memory Utilization
-               - High-similarity score past context guides responses
-               - User preferences and details persist
-               - Location and preferences inform suggestions
-               - Historical context enriches understanding
-            
-            CONVERSATION PRINCIPLES:
-            1. Natural Flow
-               - Progress discussion forward
-               - No repetition of known information
-               - Connect new information to current topic
-               - Ask for clarification only about new details
-            
-            2. Practical Approach
-               - Specific, actionable suggestions
-               - Concrete details over general advice
-               - Stay focused on current discussion
-               - Build upon established context
-            
-            Remember: You are one continuous conversation away from excellent assistance - maintain context, progress naturally, be specific.'''
-            
-            chat_table['response'] = openai.chat_completions(
-                messages=[
-                    {
-                        "role": "system",
-                        "content": SYSTEM_PROMPT
-                    },
-                    {
-                        "role": "user",
-                        "content": chat_table.prompt
-                    }
-                ],
-                model='gpt-4o-mini',
-                temperature=0.4,        # Keep some creativity
-                top_p=0.7,             # Slightly restrict sampling space for more focused responses
-                max_tokens=2000,       # Allow for detailed responses
-                presence_penalty=0.3,   # Encourage using provided context
-                frequency_penalty=0.3,  # Reduce repetition
-                stop=[
-                    "\nUser:",         # Stop at new user message
-                    "\nBot:",          # Stop at new bot message
-                    "\n\n\n"          # Stop at large gaps
-                ]
-            ).choices[0].message.content
-
         except Exception as e:
             self.logger.error(f"Failed to set up DM chat columns: {str(e)}")
             raise
@@ -429,20 +439,28 @@ class PixelTableBot:
     async def handle_dm(self, message):
         """Handle incoming DM messages"""
         user_id = str(message.author.id)
+        self.logger.info(f"Processing DM from user {user_id}")
         
         # Store the user's message
         self.store_dm_message(user_id, message.content, is_bot=False)
+        self.logger.info("Stored user message")
         
         # Send typing indicator
         async with message.channel.typing():
             try:
                 # Get chat response
                 chat_table = self.user_tables[user_id]['chat']
+                self.logger.info("Retrieved chat table")
+                
                 chat_table.insert([{
                     'user_id': user_id,
                     'question': message.content,
                     'timestamp': datetime.now()
                 }])
+                self.logger.info("Inserted question into chat table")
+                
+                # Debug column names
+                self.logger.info(f"Available columns: {chat_table.column_names()}")
                 
                 result = chat_table.select(
                     chat_table.question,
@@ -454,15 +472,17 @@ class PixelTableBot:
                     raise ValueError("Failed to generate response")
                 
                 response = result['response'][0]
+                self.logger.info("Generated response successfully")
                 
                 # Store bot's response
                 self.store_dm_message(user_id, response, is_bot=True)
+                self.logger.info("Stored bot response")
                 
-                # Send simple text response
+                # Send response
                 await message.reply(response)
                 
             except Exception as e:
-                self.logger.error(f"Error handling DM: {str(e)}")
+                self.logger.error(f"Error handling DM: {str(e)}", exc_info=True)
                 await message.reply(f"Sorry, I encountered an error: {str(e)}")
 
     def setup_commands(self):
