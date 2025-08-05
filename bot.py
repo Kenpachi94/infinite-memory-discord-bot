@@ -7,6 +7,8 @@ load_dotenv()
 if "PIXELTABLE_DB_URL" not in os.environ:
     raise EnvironmentError("PIXELTABLE_DB_URL must be defined")
 
+print("PIXELTABLE_DB_URL =", os.getenv("PIXELTABLE_DB_URL"))
+
 import logging
 from datetime import datetime
 import numpy as np
@@ -19,6 +21,13 @@ from pixeltable.functions.huggingface import sentence_transformer
 from pixeltable.iterators.string import StringSplitter
 
 from message_formatter import MessageFormatter
+
+import shutil
+
+pixeltable_path = "/root/.pixeltable"
+if os.path.exists(pixeltable_path):
+    shutil.rmtree(pixeltable_path)
+    print("🚮 Removed local Pixeltable directory")
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
