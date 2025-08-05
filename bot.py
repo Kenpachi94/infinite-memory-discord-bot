@@ -658,7 +658,6 @@ class PixelTableBot:
             raise
 
 def main():
-    load_dotenv()
     token = os.getenv('DISCORD_TOKEN')
     if not token:
         raise ValueError("Missing DISCORD_TOKEN in environment variables")
