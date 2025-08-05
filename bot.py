@@ -90,10 +90,10 @@ class PixelTableBot:
                 if "already exists" not in str(e):
                     raise
 
-            # Safely get or create 'messages' table
-            if pxt.table_exists(f'{server_dir}.messages'):
+            # Safely get or create 'messages'
+            try:
                 tables['messages'] = pxt.get_table(f'{server_dir}.messages')
-            else:
+            except Exception:
                 tables['messages'] = pxt.create_table(
                     f'{server_dir}.messages',
                     {
@@ -105,10 +105,10 @@ class PixelTableBot:
                     }
                 )
 
-            # Safely get or create 'sentences' view
-            if pxt.table_exists(f'{server_dir}.sentences'):
+            # Safely get or create 'sentences'
+            try:
                 tables['messages_view'] = pxt.get_table(f'{server_dir}.sentences')
-            else:
+            except Exception:
                 tables['messages_view'] = pxt.create_view(
                     f'{server_dir}.sentences',
                     tables['messages'],
@@ -119,10 +119,10 @@ class PixelTableBot:
                 )
                 tables['messages_view'].add_embedding_index('text', string_embed=self.get_embeddings)
 
-            # Safely get or create 'chat' table
-            if pxt.table_exists(f'{server_dir}.chat'):
+            # Safely get or create 'chat'
+            try:
                 tables['chat'] = pxt.get_table(f'{server_dir}.chat')
-            else:
+            except Exception:
                 tables['chat'] = pxt.create_table(
                     f'{server_dir}.chat',
                     {
@@ -133,10 +133,7 @@ class PixelTableBot:
                     }
                 )
 
-            # Save to server_tables dict
             self.server_tables[server_id] = tables
-
-            # Set up computed columns
             self.setup_chat_columns(server_id)
 
         except Exception as e:
