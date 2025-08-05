@@ -107,9 +107,9 @@ class PixelTableBot:
 
             # Safely get or create 'sentences'
             try:
-                tables['messages_view'] = pxt.get_table(f'{server_dir}.sentences')
+                tables['messages_view_alu'] = pxt.get_table(f'{server_dir}.sentences')
             except Exception:
-                tables['messages_view'] = pxt.create_view(
+                tables['messages_view_alu'] = pxt.create_view(
                     f'{server_dir}.sentences',
                     tables['messages'],
                     iterator=StringSplitter.create(
@@ -118,7 +118,7 @@ class PixelTableBot:
                     )
                 )
                 try:
-                    tables['messages_view'].add_embedding_index('text', string_embed=self.get_embeddings)
+                    tables['messages_view_alu'].add_embedding_index('text', string_embed=self.get_embeddings)
                 except Exception as e:
                     if "already exists" not in str(e):
                         self.logger.error(f"Failed to add embedding index: {e}")
@@ -157,7 +157,7 @@ class PixelTableBot:
             try:
                 # Try to get existing tables first
                 tables['messages'] = pxt.get_table(f'{user_dir}.messages')
-                tables['messages_view'] = pxt.get_table(f'{user_dir}.sentences')
+                tables['messages_view_alu'] = pxt.get_table(f'{user_dir}.sentences')
                 tables['chat'] = pxt.get_table(f'{user_dir}.chat')
             except Exception:
                 try:
@@ -177,7 +177,7 @@ class PixelTableBot:
                     }
                 )
 
-                tables['messages_view'] = pxt.create_view(
+                tables['messages_view_alu'] = pxt.create_view(
                     f'{user_dir}.sentences',
                     tables['messages'],
                     iterator=StringSplitter.create(
@@ -187,7 +187,7 @@ class PixelTableBot:
                 )
 
                 try:
-                    tables['messages_view'].add_embedding_index('text', string_embed=self.get_embeddings)
+                    tables['messages_view_alu'].add_embedding_index('text', string_embed=self.get_embeddings)
                 except Exception as e:
                     if "already exists" not in str(e):
                         self.logger.error(f"Failed to add embedding index: {e}")
@@ -213,20 +213,20 @@ class PixelTableBot:
         """Set up computed columns for server chat"""
         try:
             tables = self.server_tables[server_id]
-            messages_view = tables['messages_view']
+            messages_view_alu = tables['messages_view_alu']
             chat_table = tables['chat']
 
             try:
-                @messages_view.query
+                @messages_view_alu.query
                 def get_context(question_text: str):
-                    sim = messages_view.text.similarity(question_text)
+                    sim = messages_view_alu.text.similarity(question_text)
                     return (
-                        messages_view
+                        messages_view_alu
                         .where(sim > 0.3)
                         .order_by(sim, asc=False)
                         .select(
-                            text=messages_view.text,
-                            username=messages_view.username,
+                            text=messages_view_alu.text,
+                            username=messages_view_alu.username,
                             sim=sim
                         )
                         .limit(20)
@@ -335,20 +335,20 @@ class PixelTableBot:
         """Set up computed columns for DM chat"""
         try:
             tables = self.user_tables[user_id]
-            messages_view = tables['messages_view']
+            messages_view_alu = tables['messages_view_alu']
             chat_table = tables['chat']
 
             # First add context column
-            @messages_view.query
+            @messages_view_alu.query
             def get_context(question_text: str):
-                sim = messages_view.text.similarity(question_text)
+                sim = messages_view_alu.text.similarity(question_text)
                 return (
-                    messages_view
+                    messages_view_alu
                     .where(sim > 0.2)
                     .order_by(sim, asc=False)
                     .select(
-                        text=messages_view.text,
-                        is_bot=messages_view.is_bot,
+                        text=messages_view_alu.text,
+                        is_bot=messages_view_alu.is_bot,
                         sim=sim
                     )
                     .limit(50)
@@ -577,14 +577,14 @@ class PixelTableBot:
                 if server_id not in self.server_tables:
                     self.initialize_server_tables(server_id)
 
-                messages_view = self.server_tables[server_id]['messages_view']
-                sim = messages_view.text.similarity(query)
+                messages_view_alu = self.server_tables[server_id]['messages_view_alu']
+                sim = messages_view_alu.text.similarity(query)
                 results_df = (
-                    messages_view
+                    messages_view_alu
                     .order_by(sim, asc=False)
                     .select(
-                        text=messages_view.text,
-                        username=messages_view.username,
+                        text=messages_view_alu.text,
+                        username=messages_view_alu.username,
                         similarity=sim
                     )
                     .limit(5)
