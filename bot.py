@@ -11,7 +11,6 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 import pixeltable as pxt
-print("Connected to ASD:", pxt.current_db_url())
 from pixeltable.functions import openai
 from pixeltable.functions.huggingface import sentence_transformer
 from pixeltable.iterators.string import StringSplitter
