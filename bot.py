@@ -199,13 +199,19 @@ Respond in alignment with the style and context."""
 
 
 async def ensure_db_ready():
+    global db_pool
     try:
+        if db_pool.closed:
+            logger.warning("DB pool was closed. Recreating.")
+            db_pool = AsyncConnectionPool(DATABASE_URL, max_size=5, timeout=10)
+            await db_pool.open()
+
         async with db_pool.connection() as conn:
             async with conn.cursor() as cur:
                 await cur.execute("SELECT 1")
-    except psycopg.OperationalError:
-        logger.warning("DB connection stale, reopening pool.")
-        await db_pool.close()
+    except psycopg.OperationalError as e:
+        logger.error(f"DB connection failed: {e}. Reinitializing pool.")
+        db_pool = AsyncConnectionPool(DATABASE_URL, max_size=5, timeout=10)
         await db_pool.open()
 
 def split_message(message, limit=1999):
