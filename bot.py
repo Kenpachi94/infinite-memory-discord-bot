@@ -3,6 +3,17 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+PIXELTABLE_DB_URL = os.getenv("PIXELTABLE_DB_URL")
+if not PIXELTABLE_DB_URL:
+    raise RuntimeError("Missing PIXELTABLE_DB_URL")
+
+import pixeltable as pxt
+
+# ✅ THIS IS CRUCIAL
+pxt.set_config({
+    'db_url': PIXELTABLE_DB_URL
+})
+
 # Force set PIXELTABLE_DB_URL before any Pixeltable usage
 if "PIXELTABLE_DB_URL" not in os.environ:
     raise EnvironmentError("PIXELTABLE_DB_URL must be defined")
@@ -15,7 +26,6 @@ import numpy as np
 import discord
 from discord import app_commands
 from discord.ext import commands
-import pixeltable as pxt
 from pixeltable.functions import openai
 from pixeltable.functions.huggingface import sentence_transformer
 from pixeltable.iterators.string import StringSplitter
