@@ -160,7 +160,7 @@ Respond in alignment with the style and context."""
 
         response = client.chat.completions.create(
             model="gpt-4o",
-            temperature=0.5,
+            temperature=0.6,
             top_p=0.9,
             max_tokens=2000,
             presence_penalty=0.1,
