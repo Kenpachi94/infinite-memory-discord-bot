@@ -190,7 +190,8 @@ Respond in alignment with the style and context."""
                 )
                 await conn.commit()
 
-        await interaction.followup.send(answer)
+        for chunk in split_message(answer):
+            await interaction.followup.send(chunk)
 
     except Exception as e:
         logger.error(f"Failed to generate response: {e}")
@@ -206,6 +207,9 @@ async def ensure_db_ready():
         logger.warning("DB connection stale, reopening pool.")
         await db_pool.close()
         await db_pool.open()
+
+def split_message(message, limit=1999):
+    return [message[i:i+limit] for i in range(0, len(message), limit)]
 
 if __name__ == "__main__":
     if not DISCORD_TOKEN or not OPENAI_API_KEY or not DATABASE_URL:
