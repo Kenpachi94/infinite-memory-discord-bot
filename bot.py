@@ -69,6 +69,7 @@ async def on_ready():
 # Store every message from server
 @bot.event
 async def on_message(message):
+    await ensure_db_ready()
     if message.author == bot.user:
         return
 
@@ -98,6 +99,8 @@ async def on_message(message):
 @bot.tree.command(name="chat", description="Ask a question with full server context")
 @app_commands.describe(question="Your question")
 async def chat(interaction: discord.Interaction, question: str):
+    await ensure_db_ready()
+
     if isinstance(interaction.channel, discord.DMChannel):
         await interaction.response.send_message("This command is only available in servers.", ephemeral=True)
         return
