@@ -162,7 +162,6 @@ Respond in alignment with the style and context."""
             model="gpt-4o",
             temperature=0.6,
             top_p=0.9,
-            max_tokens=5000,
             presence_penalty=0.1,
             frequency_penalty=0.2,
             messages=[
