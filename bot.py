@@ -80,7 +80,8 @@ class PixelTableBot:
     def initialize_server_tables(self, server_id: str):
         """Initialize server-specific tables"""
         try:
-            server_dir = f'discord_bot_{server_id}'
+            project_prefix = os.getenv("BOT_INSTANCE_ID", "defaultbot")
+            server_dir = f'{project_prefix}_discord_bot_{server_id}'
             tables = {}
 
             # Ensure directory exists
@@ -151,7 +152,8 @@ class PixelTableBot:
             if user_id in self.user_tables:
                 return
 
-            user_dir = f'discord_dm_{user_id}'
+            project_prefix = os.getenv("BOT_INSTANCE_ID", "defaultbot")
+            user_dir = f'{project_prefix}_discord_dm_{user_id}'
             tables = {}
 
             try:
