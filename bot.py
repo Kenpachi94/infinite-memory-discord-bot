@@ -23,8 +23,9 @@ intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# Create a pool to NeonDB
-db_pool = psycopg.AsyncConnectionPool.from_url(DATABASE_URL)
+from psycopg_pool import AsyncConnectionPool
+
+db_pool = AsyncConnectionPool(DATABASE_URL)
 
 # Ensure table exists for storing messages
 CREATE_MESSAGES_TABLE = """
