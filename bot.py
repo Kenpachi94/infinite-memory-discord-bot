@@ -38,7 +38,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 from psycopg_pool import AsyncConnectionPool
 
-db_pool = AsyncConnectionPool(DATABASE_URL, open=False)
+db_pool = AsyncConnectionPool(DATABASE_URL, open=True, max_size=5, timeout=10, recycle=300, reconnect=True)
 
 # Ensure table exists for storing messages
 CREATE_MESSAGES_TABLE = """
@@ -192,6 +192,16 @@ Respond in alignment with the style and context."""
         logger.error(f"Failed to generate response: {e}")
         await interaction.followup.send(f"Sorry, I encountered an error: {str(e)}")
 
+
+async def ensure_db_ready():
+    try:
+        async with db_pool.connection() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute("SELECT 1")
+    except psycopg.OperationalError:
+        logger.warning("DB connection stale, reopening pool.")
+        await db_pool.close()
+        await db_pool.open()
 
 if __name__ == "__main__":
     if not DISCORD_TOKEN or not OPENAI_API_KEY or not DATABASE_URL:
