@@ -117,7 +117,12 @@ class PixelTableBot:
                         separators='sentence',
                     )
                 )
-                tables['messages_view'].add_embedding_index('text', string_embed=self.get_embeddings)
+                try:
+                    tables['messages_view'].add_embedding_index('text', string_embed=self.get_embeddings)
+                except Exception as e:
+                    if "already exists" not in str(e):
+                        self.logger.error(f"Failed to add embedding index: {e}")
+                        raise
 
             # Safely get or create 'chat'
             try:
@@ -181,7 +186,12 @@ class PixelTableBot:
                     )
                 )
 
-                tables['messages_view'].add_embedding_index('text', string_embed=self.get_embeddings)
+                try:
+                    tables['messages_view'].add_embedding_index('text', string_embed=self.get_embeddings)
+                except Exception as e:
+                    if "already exists" not in str(e):
+                        self.logger.error(f"Failed to add embedding index: {e}")
+                        raise
 
                 tables['chat'] = pxt.create_table(
                     f'{user_dir}.chat',
