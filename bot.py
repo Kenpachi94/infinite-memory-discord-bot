@@ -1,11 +1,19 @@
 import os
 import logging
+
+import socket
+print("DNS Check:", socket.gethostbyname('discord.com'))
+
 from datetime import datetime
 import discord
 from discord import app_commands
 from discord.ext import commands
 import openai
 import psycopg
+
+import aiohttp
+
+aiohttp.TCPConnector(force_close=True, family=socket.AF_INET)
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
