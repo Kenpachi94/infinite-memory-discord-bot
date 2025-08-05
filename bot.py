@@ -38,7 +38,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 from psycopg_pool import AsyncConnectionPool
 
-db_pool = AsyncConnectionPool(DATABASE_URL, open=True, max_size=5, timeout=10)
+db_pool = None  # will initialize in on_ready
 
 # Ensure table exists for storing messages
 CREATE_MESSAGES_TABLE = """
@@ -54,7 +54,9 @@ CREATE TABLE IF NOT EXISTS discord_messages (
 
 @bot.event
 async def on_ready():
+    global db_pool
     logger.info(f"Bot logged in as {bot.user.name}")
+    db_pool = AsyncConnectionPool(DATABASE_URL, max_size=5, timeout=10)
     await db_pool.open()  # ✅ Open the pool here safely
     await bot.tree.sync()
 
