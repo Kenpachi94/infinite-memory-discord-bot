@@ -1,8 +1,11 @@
 import os
-os.environ['PIXELTABLE_DB_URL'] = os.getenv('PGDATABASE_URL')
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# Force set PIXELTABLE_DB_URL before any Pixeltable usage
+if "PIXELTABLE_DB_URL" not in os.environ:
+    raise EnvironmentError("PIXELTABLE_DB_URL must be defined")
 
 import logging
 from datetime import datetime
