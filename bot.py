@@ -38,7 +38,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 from psycopg_pool import AsyncConnectionPool
 
-db_pool = AsyncConnectionPool(DATABASE_URL, open=True, max_size=5, timeout=10, recycle=300, reconnect=True)
+db_pool = AsyncConnectionPool(DATABASE_URL, open=True, max_size=5, timeout=10)
 
 # Ensure table exists for storing messages
 CREATE_MESSAGES_TABLE = """
