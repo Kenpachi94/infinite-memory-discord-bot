@@ -9,10 +9,7 @@ if not PIXELTABLE_DB_URL:
 
 import pixeltable as pxt
 
-# ✅ THIS IS CRUCIAL
-pxt.set_config({
-    'db_url': PIXELTABLE_DB_URL
-})
+pxt.initialize(db_url=PIXELTABLE_DB_URL)
 
 # Force set PIXELTABLE_DB_URL before any Pixeltable usage
 if "PIXELTABLE_DB_URL" not in os.environ:
