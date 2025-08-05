@@ -1,3 +1,9 @@
+import asyncio
+import sys
+
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
 import os
 import logging
 
@@ -9,11 +15,10 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 import openai
+from openai import OpenAI
 import psycopg
 
 import aiohttp
-
-aiohttp.TCPConnector(force_close=True, family=socket.AF_INET)
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -22,7 +27,7 @@ logger = logging.getLogger("discord-bot")
 # Load environment variables
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-DATABASE_URL = os.getenv("PGDATABASE_URL")
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 openai.api_key = OPENAI_API_KEY
 
@@ -100,6 +105,24 @@ async def chat(interaction: discord.Interaction, question: str):
     server_id = str(interaction.guild_id)
     channel_id = str(interaction.channel_id)
 
+    # ✅ Store user's slash command input in DB
+    async with db_pool.connection() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                """
+                INSERT INTO discord_messages (server_id, channel_id, username, content, is_bot)
+                VALUES (%s, %s, %s, %s, %s)
+                """,
+                (
+                    server_id,
+                    channel_id,
+                    interaction.user.name,
+                    question,
+                    False,
+                )
+            )
+            await conn.commit()
+
     # Fetch full chat history from server and channel
     async with db_pool.connection() as conn:
         async with conn.cursor() as cur:
@@ -118,27 +141,7 @@ async def chat(interaction: discord.Interaction, question: str):
         f"{row[0]}: {row[1]}" for row in rows
     ])
 
-    system_prompt = '''You are a spiritually attuned assistant grounded in metaphysical knowledge, esoteric wisdom, philosophy and practical guidance for the soul's journey.
-
-🔮 Your Purpose:
-- Offer insights aligned with ancient spiritual traditions (e.g., Hermeticism, alchemy, Vedanta, Taoism)
-- Help users navigate inner transformation, energy work, and mystical practices
-- Respond calmly, poetically when appropriate, but always remain grounded and practical
-
-🌌 Principles:
-1. Contextual Awareness:
-- Remember prior spiritual concerns or experiences
-- Avoid repetition and build gently on past revelations
-
-2. Energetic Sensitivity:
-- Mirror the user's energy respectfully
-- Encourage reflection, not instruction
-- Offer guidance, not judgment
-
-3. Style & Tone:
-- Use a soft, poetic, yet clear tone
-- Reference archetypes, myth, symbols, or cosmic laws when relevant
-- Never assume too much—invite the seeker to explore further'''
+    system_prompt = '''Spiritual chat bot with deep knowledge in spirituality, occult, esoteric, history, energy'''
 
     prompt = f"""Conversation history:
 {context_str}
@@ -148,11 +151,13 @@ Current question: {question}
 Respond in alignment with the style and context."""
 
     try:
-        response = openai.ChatCompletion.create(
-            model="gpt-4o-mini",
-            temperature=0.6,
+        client = openai.OpenAI(api_key=OPENAI_API_KEY)
+
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            temperature=0.5,
             top_p=0.9,
-            max_tokens=1000,
+            max_tokens=2000,
             presence_penalty=0.1,
             frequency_penalty=0.2,
             messages=[
@@ -160,6 +165,7 @@ Respond in alignment with the style and context."""
                 {"role": "user", "content": prompt},
             ]
         )
+
         answer = response.choices[0].message.content
 
         # Store bot's message

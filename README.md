@@ -1,3 +1,8 @@
+python -m venv venv
+venv\Scripts\activate
+python bot.py
+
+
 # 🤖 PixelBot: Infinite Memory Discord Assistant 
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/) 
 [![Discord.py](https://img.shields.io/badge/discord.py-2.0%2B-blue.svg)](https://github.com/Rapptz/discord.py) 
