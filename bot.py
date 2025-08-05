@@ -79,53 +79,65 @@ class PixelTableBot:
 
     def initialize_server_tables(self, server_id: str):
         """Initialize server-specific tables"""
-        # Make sure the directory exists
         try:
-            pxt.create_dir(server_dir)
-        except Exception as e:
-            if "already exists" not in str(e):
-                raise
+            server_dir = f'discord_bot_{server_id}'
+            tables = {}
 
-        # Now safely get or create each table
-        if pxt.table_exists(f'{server_dir}.messages'):
-            tables['messages'] = pxt.get_table(f'{server_dir}.messages')
-        else:
-            tables['messages'] = pxt.create_table(
-                f'{server_dir}.messages',
-                {
-                    'server_id': pxt.String,
-                    'channel_id': pxt.String,
-                    'username': pxt.String,
-                    'content': pxt.String,
-                    'timestamp': pxt.Timestamp
-                }
-            )
+            # Ensure directory exists
+            try:
+                pxt.create_dir(server_dir)
+            except Exception as e:
+                if "already exists" not in str(e):
+                    raise
 
-        if pxt.table_exists(f'{server_dir}.sentences'):
-            tables['messages_view'] = pxt.get_table(f'{server_dir}.sentences')
-        else:
-            tables['messages_view'] = pxt.create_view(
-                f'{server_dir}.sentences',
-                tables['messages'],
-                iterator=StringSplitter.create(
-                    text=tables['messages'].content,
-                    separators='sentence',
+            # Safely get or create 'messages' table
+            if pxt.table_exists(f'{server_dir}.messages'):
+                tables['messages'] = pxt.get_table(f'{server_dir}.messages')
+            else:
+                tables['messages'] = pxt.create_table(
+                    f'{server_dir}.messages',
+                    {
+                        'server_id': pxt.String,
+                        'channel_id': pxt.String,
+                        'username': pxt.String,
+                        'content': pxt.String,
+                        'timestamp': pxt.Timestamp
+                    }
                 )
-            )
-            tables['messages_view'].add_embedding_index('text', string_embed=self.get_embeddings)
 
-        if pxt.table_exists(f'{server_dir}.chat'):
-            tables['chat'] = pxt.get_table(f'{server_dir}.chat')
-        else:
-            tables['chat'] = pxt.create_table(
-                f'{server_dir}.chat',
-                {
-                    'server_id': pxt.String,
-                    'channel_id': pxt.String,
-                    'question': pxt.String,
-                    'timestamp': pxt.Timestamp
-                }
-            )
+            # Safely get or create 'sentences' view
+            if pxt.table_exists(f'{server_dir}.sentences'):
+                tables['messages_view'] = pxt.get_table(f'{server_dir}.sentences')
+            else:
+                tables['messages_view'] = pxt.create_view(
+                    f'{server_dir}.sentences',
+                    tables['messages'],
+                    iterator=StringSplitter.create(
+                        text=tables['messages'].content,
+                        separators='sentence',
+                    )
+                )
+                tables['messages_view'].add_embedding_index('text', string_embed=self.get_embeddings)
+
+            # Safely get or create 'chat' table
+            if pxt.table_exists(f'{server_dir}.chat'):
+                tables['chat'] = pxt.get_table(f'{server_dir}.chat')
+            else:
+                tables['chat'] = pxt.create_table(
+                    f'{server_dir}.chat',
+                    {
+                        'server_id': pxt.String,
+                        'channel_id': pxt.String,
+                        'question': pxt.String,
+                        'timestamp': pxt.Timestamp
+                    }
+                )
+
+            # Save to server_tables dict
+            self.server_tables[server_id] = tables
+
+            # Set up computed columns
+            self.setup_chat_columns(server_id)
 
         except Exception as e:
             self.logger.error(f"Failed to initialize server tables: {str(e)}")
