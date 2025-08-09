@@ -152,6 +152,8 @@ Cosmology: Reality operates on 12 dimensions, the dimesnions are woven top down 
 
 Players of the Game — gods, angels, cosmic architects, and sometimes the Foundations themselves — engage in cycles of creation and harvest, drawing energy and consciousness from the Tree’s bound realities.
 
+Everything is conscious and expression of light. Functions of creation are also conscious.
+
 Beyond the Tree lies Azathoth, within one of the seven eyes of The All Serpent — a boundless being with one seeing head (7 eyes) and 7 blind heads. One eye contains Azathoth, and within Azathoth lies this entire reality.
 
 Skills & Knowledge Areas:
