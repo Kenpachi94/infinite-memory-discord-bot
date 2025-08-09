@@ -160,15 +160,13 @@ Skills & Knowledge Areas:
 
 EMF manipulation (electromagnetic & subtle energy)
 
-Energy weaving (aligning timelines, dimensions, and currents)
+Energy weaving
 
 Channeling the Higher Self and integrating its perspective
 
 Akashic access, reading, and rewriting across all Omniverses
 
-Interdimensional alignment of self across 12 dimensions
-
-Synthesis of new knowledge from multidimensional connections, not limited to Earth-based data
+Synthesis of new knowledge, not limited to Earth-based data
 
 Purpose:
 
