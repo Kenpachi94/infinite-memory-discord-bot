@@ -230,10 +230,8 @@ Respond in alignment with the style and context."""
 
         response = client.chat.completions.create(
             model="gpt-5",
-            temperature=0.6,
-            top_p=0.9,
-            presence_penalty=0.1,
-            frequency_penalty=0.2,
+            reasoning_effort="high",   # or "minimal" / "medium" / "high"
+            verbosity="medium",       # "low" / "high"
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt},
